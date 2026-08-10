@@ -58,3 +58,24 @@ def test_weights_apply_from_day_after_decision(monkeypatch):
     # 决策日（索引 min_train 那天）当天仍为现金，次日才生效 → 无同日泄漏
     assert schedule.iloc[min_train].abs().sum() == 0
     assert schedule.iloc[min_train + 1]["600000.XSHG"] == 0.5
+
+
+def test_signal_only_sees_data_up_to_decision_day(monkeypatch):
+    index_df, stocks = _data()
+    min_train = 40
+    captured = {}
+
+    def spy_signal(idx_trail, stock_trail, cfg):
+        if "idx_last" not in captured:
+            captured["idx_last"] = idx_trail.index[-1]
+            captured["stock_last"] = {
+                c: df.index[-1] for c, df in stock_trail.items()}
+        return {"600000.XSHG": 0.5}
+
+    monkeypatch.setattr("src.backtest.walkforward._signal", spy_signal)
+    build_weight_schedule(index_df, stocks, _cfg(),
+                          rebalance_freq=10, min_train_days=min_train)
+    first_decision_date = index_df.index[min_train]
+    # 首次决策生成的信号，其训练数据必须截止于决策日当天 → 无前视
+    assert captured["idx_last"] == first_decision_date
+    assert all(v == first_decision_date for v in captured["stock_last"].values())

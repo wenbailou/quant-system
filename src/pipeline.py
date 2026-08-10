@@ -77,6 +77,10 @@ def run_walk_forward(
 
     每个重平衡周期只用截至当天的历史数据生成信号，新权重自次日生效，
     定期调仓。返回净值曲线与绩效指标，可作为相对可信的策略收益估计。
+
+    注意：walk-forward 为「权重 × 收益」逐日复利，未包含止损/止盈等
+    盘中风控（与 run_pipeline 的 RiskBacktestEngine 口径不同），
+    且采用"决策日收盘建仓、次日结算"的近似，结果用于相对比较而非绝对估计。
     """
     loader = get_loader(cfg)
     index_df = loader.load_index(index_code)
