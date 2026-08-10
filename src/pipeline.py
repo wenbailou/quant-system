@@ -15,6 +15,10 @@ def run_pipeline(
     """端到端主流程：数据→特征→双模型→组合→风控→回测→指标→信号。
 
     返回 dict，含 position / picks / weights / nav / metrics / advice。
+
+    注意：当前为简化的一次性直通回测——选股与择时使用全窗口数据，
+    且引擎自首日起持有选定标的、无滚动调仓，存在前视偏差（look-ahead）。
+    该结果仅用于演示流程，不应作为真实策略收益的估计。
     """
     loader = get_loader(cfg)
 

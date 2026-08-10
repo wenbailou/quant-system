@@ -33,11 +33,12 @@ def _prices(closes: dict[str, list[float]]) -> dict[str, pd.DataFrame]:
 
 
 def test_risk_engine_buy_and_hold():
-    prices = _prices({"600000": [100.0, 110.0, 121.0]})
+    # 缓涨序列，不触发止损/止盈/移动止损，真正验证持有
+    prices = _prices({"600000": [100.0, 101.0, 102.0]})
     engine = RiskBacktestEngine(initial_cash=1_000_000)
     nav = engine.run(prices, {"600000": 1.0})
     assert nav.iloc[0] == pytest.approx(1_000_000)
-    assert nav.iloc[-1] == pytest.approx(1_000_000 * 1.1 * 1.1)
+    assert nav.iloc[-1] == pytest.approx(1_000_000 * 1.02)
 
 
 def test_risk_engine_stop_loss():
