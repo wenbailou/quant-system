@@ -4,6 +4,7 @@ from src.models.selection import SelectionModel
 from src.strategy.portfolio import build_portfolio, apply_risk_pipeline
 from src.backtest.engine import RiskBacktestEngine
 from src.backtest.metrics import annualized_return, max_drawdown, sharpe_ratio
+from src.backtest.walkforward import build_weight_schedule, walk_forward_nav
 from src.signals import build_daily_advice
 
 
@@ -62,4 +63,38 @@ def run_pipeline(
             "sharpe_ratio": sharpe_ratio(nav),
         },
         "advice": advice,
+    }
+
+
+def run_walk_forward(
+    cfg: dict,
+    index_code: str = "000300.XSHG",
+    stock_codes: list[str] | None = None,
+    rebalance_freq: int = 20,
+    min_train_days: int = 60,
+) -> dict:
+    """滚动调仓（walk-forward）回测：消除前视偏差。
+
+    每个重平衡周期只用截至当天的历史数据生成信号，新权重自次日生效，
+    定期调仓。返回净值曲线与绩效指标，可作为相对可信的策略收益估计。
+    """
+    loader = get_loader(cfg)
+    index_df = loader.load_index(index_code)
+    stock_codes = stock_codes or [f"60000{i}.XSHG" for i in range(1, 5)]
+    stocks = {c: loader.load_stock(c) for c in stock_codes}
+
+    schedule = build_weight_schedule(
+        index_df, stocks, cfg,
+        rebalance_freq=rebalance_freq, min_train_days=min_train_days,
+    )
+    nav = walk_forward_nav(schedule, stocks)
+
+    return {
+        "nav": nav,
+        "weight_schedule": schedule,
+        "metrics": {
+            "annualized_return": annualized_return(nav),
+            "max_drawdown": max_drawdown(nav),
+            "sharpe_ratio": sharpe_ratio(nav),
+        },
     }

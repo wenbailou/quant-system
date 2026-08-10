@@ -10,7 +10,7 @@ from src.models.timing import TimingModel
 from src.models.selection import SelectionModel
 from src.data.factory import get_loader
 from src.features.pipeline import build_features
-from src.pipeline import run_pipeline
+from src.pipeline import run_walk_forward
 
 st.set_page_config(page_title="沪深量化系统", layout="wide")
 cfg = load_config("config.yaml")
@@ -50,13 +50,12 @@ with tab2:
     st.write(picks)
 
 with tab3:
-    st.subheader("回测结果")
-    result = run_pipeline(loader_cfg)
-    st.line_chart(result["nav"])
-    m = result["metrics"]
+    st.subheader("滚动调仓回测（walk-forward，无前视偏差）")
+    wf = run_walk_forward(loader_cfg)
+    st.line_chart(wf["nav"])
+    m = wf["metrics"]
     c1, c2, c3 = st.columns(3)
     c1.metric("年化收益", f"{m['annualized_return'] * 100:.2f}%")
     c2.metric("最大回撤", f"{m['max_drawdown'] * 100:.2f}%")
     c3.metric("夏普比率", f"{m['sharpe_ratio']:.2f}")
-    st.write("候选标的", result["picks"])
-    st.caption(result["advice"]["caution"])
+    st.caption("每 20 个交易日调仓，信号仅用截至当天的历史数据，次日生效。")
