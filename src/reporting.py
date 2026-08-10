@@ -30,11 +30,12 @@ def generate_markdown_report(result: dict, cfg: dict, report_date=None) -> str:
     lines.append("")
     lines.append("| 代码 | 目标权重 | 操作 |")
     lines.append("|---|---|---|")
-    total_weight = sum(weights.values())
-    if picks and total_weight > 0:
-        for code in picks:
-            w = weights.get(code, 0.0)
-            lines.append(f"| {code} | {w * 100:.1f}% | 买入 |")
+    buy_rows = [
+        f"| {code} | {w * 100:.1f}% | 买入 |"
+        for code, w in weights.items() if w > 0
+    ]
+    if buy_rows:
+        lines.extend(buy_rows)
     else:
         lines.append("| - | - | 空仓观望 |")
     lines.append("")
