@@ -31,7 +31,7 @@ tab1, tab2, tab3 = st.tabs(["大盘研判", "选股列表", "回测"])
 
 with tab1:
     st.subheader("大盘择时信号")
-    idx = loader.load_index("000300")
+    idx = loader.load_index("000300.XSHG")
     feats = build_features(idx)
     st.line_chart(feats["close"])
     model = TimingModel(cfg["models"]["timing"]["predict_horizon_days"])
@@ -41,7 +41,8 @@ with tab1:
 
 with tab2:
     st.subheader("候选股票")
-    stocks = {f"60000{i}": loader.load_stock(f"60000{i}") for i in range(1, 5)}
+    stocks = {f"60000{i}.XSHG": loader.load_stock(f"60000{i}.XSHG")
+              for i in range(1, 5)}
     sel = SelectionModel(top_k=cfg["models"]["selection"]["top_k"])
     sel.fit(stocks)
     picks = sel.select(stocks)

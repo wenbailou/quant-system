@@ -18,7 +18,9 @@ python -m streamlit run src/dashboard/app.py
 ### 使用聚宽（JoinQuant）真实数据
 
 1. 安装聚宽 SDK：`pip install jqdatasdk`
-2. 在 `config.yaml` 中填写账号密码并切换数据源：
+2. 配置凭证并切换数据源（二选一）：
+   - 推荐用环境变量（避免凭证入库）：`JQ_ACCOUNT` / `JQ_PASSWORD`
+   - 或在 `config.yaml` 中填写：
 
 ```yaml
 data:

@@ -29,3 +29,13 @@ def test_get_loader_unknown_source_raises():
     cfg = {"data": {"source": "unknown"}}
     with pytest.raises(ValueError):
         get_loader(cfg)
+
+
+def test_get_loader_joinquant_reads_env(monkeypatch):
+    monkeypatch.setenv("JQ_ACCOUNT", "env_acc")
+    monkeypatch.setenv("JQ_PASSWORD", "env_pwd")
+    cfg = {"data": {"source": "joinquant", "start_date": "2020-01-01",
+                    "end_date": "2020-01-10", "joinquant": {}}}
+    loader = get_loader(cfg)
+    assert loader.account == "env_acc"
+    assert loader.password == "env_pwd"
