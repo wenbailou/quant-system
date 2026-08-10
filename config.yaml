@@ -1,0 +1,40 @@
+data:
+  sqlite_path: "data/market.db"
+  start_date: "2016-01-01"
+  end_date: "2026-08-01"
+
+models:
+  timing:
+    predict_horizon_days: 5
+    confidence_threshold: 0.60
+  selection:
+    predict_horizon_days: 5
+    top_k: 10
+    confidence_threshold: 0.60
+
+risk:
+  total_position_max: 0.90
+  single_stock_max: 0.15
+  industry_max: 0.30
+  min_positions: 5
+  max_positions: 15
+  cash_min_ratio: 0.10
+  stop_loss_pct: 0.08
+  trailing_stop_pct: 0.10
+  take_profit_pct: 0.20
+  portfolio_daily_drawdown: 0.03
+  portfolio_5d_drawdown: 0.05
+  max_drawdown_circuit: 0.15
+  min_avg_amount: 50000000
+  min_list_days: 60
+  min_market_cap: 3000000000
+  stamp_duty: 0.0005
+  commission: 0.00025
+  slippage: 0.001
+  max_volume_ratio: 0.10
+
+position_levels:
+  strong_bear: 0.00
+  bear: 0.30
+  neutral: 0.60
+  bull: 0.90
