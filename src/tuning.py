@@ -55,6 +55,7 @@ def grid_search(
     for combo in combos:
         params = dict(zip(keys, combo))
         cfg = copy.deepcopy(base_cfg)
+        error_msg = ""
         try:
             res = run_walk_forward(
                 cfg,
@@ -69,20 +70,40 @@ def grid_search(
                 "annualized_return": float("nan"),
                 "max_drawdown": float("nan"),
                 "sharpe_ratio": float("nan"),
-                "error": str(exc),
             }
-        score = score_fn(metrics)
+            error_msg = str(exc)
+        try:
+            score = score_fn(metrics)
+        except Exception as exc:
+            score = float("nan")
+            error_msg = f"{error_msg}; score_fn error: {exc}".strip("; ")
         row = {
             **params,
             "annualized_return": metrics.get("annualized_return", float("nan")),
             "max_drawdown": metrics.get("max_drawdown", float("nan")),
             "sharpe_ratio": metrics.get("sharpe_ratio", float("nan")),
             "score": score,
+            "error": error_msg,
         }
         records.append(row)
 
     results = pd.DataFrame(records)
-    results = results.sort_values("score", ascending=False).reset_index(drop=True)
+    results = results.sort_values(
+        "score", ascending=False, na_position="last"
+    ).reset_index(drop=True)
+
+    # 全部失败的防御：若无任何有效分数，返回空 best 字段而非抛 KeyError
+    if results["score"].isna().all():
+        return {
+            "results": results,
+            "best_params": {},
+            "best_score": float("nan"),
+            "best_metrics": {
+                "annualized_return": float("nan"),
+                "max_drawdown": float("nan"),
+                "sharpe_ratio": float("nan"),
+            },
+        }
 
     best = results.iloc[0]
     best_params = {k: int(best[k]) for k in keys}
@@ -99,8 +120,15 @@ def grid_search(
 
 
 def format_results_table(results: pd.DataFrame) -> str:
-    """把网格搜索结果格式化为 Markdown 对比表。"""
+    """把网格搜索结果格式化为 Markdown 对比表。
+
+    参数列（整数）原样渲染，指标列（浮点）保留 4 位小数。
+    若存在 error 列且含非空字符串，追加为最后一列便于排查。
+    """
+    has_error = "error" in results.columns and results["error"].astype(str).str.len().any()
     cols = [c for c in results.columns if c != "error"]
+    if has_error:
+        cols.append("error")
     header = "| " + " | ".join(cols) + " |"
     sep = "| " + " | ".join(["---"] * len(cols)) + " |"
     lines = [header, sep]
@@ -108,7 +136,9 @@ def format_results_table(results: pd.DataFrame) -> str:
         cells = []
         for c in cols:
             v = row[c]
-            if isinstance(v, float):
+            if c == "error":
+                cells.append(str(v) if v else "-")
+            elif isinstance(v, float):
                 cells.append(f"{v:.4f}")
             else:
                 cells.append(str(v))
