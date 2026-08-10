@@ -1,7 +1,11 @@
 data:
   sqlite_path: "data/market.db"
+  source: "mock"          # mock | joinquant
   start_date: "2016-01-01"
   end_date: "2026-08-01"
+  joinquant:
+    account: ""
+    password: ""
 
 models:
   timing:

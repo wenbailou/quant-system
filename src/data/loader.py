@@ -1,9 +1,10 @@
 import pandas as pd
 import numpy as np
+from src.data.base import MarketDataLoader
 
 
-class MockMarketDataLoader:
-    """模拟行情源，真实实现需替换为聚宽/优矿/通联接口。"""
+class MockMarketDataLoader(MarketDataLoader):
+    """模拟行情源，用于开发与测试。"""
 
     def __init__(self, start: str, end: str, seed: int = 42):
         self.start = pd.Timestamp(start)

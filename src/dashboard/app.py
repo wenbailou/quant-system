@@ -8,7 +8,7 @@ sys.path.append(str(Path(__file__).resolve().parents[2]))
 from src.config import load_config
 from src.models.timing import TimingModel
 from src.models.selection import SelectionModel
-from src.data.loader import MockMarketDataLoader
+from src.data.factory import get_loader
 from src.features.pipeline import build_features
 
 st.set_page_config(page_title="沪深量化系统", layout="wide")
@@ -21,11 +21,16 @@ with st.sidebar:
     start = st.date_input("起始日期", value=date(2020, 1, 1))
     end = st.date_input("结束日期", value=date.today())
 
+loader_cfg = dict(cfg)
+loader_cfg["data"] = dict(cfg["data"])
+loader_cfg["data"]["start_date"] = str(start)
+loader_cfg["data"]["end_date"] = str(end)
+loader = get_loader(loader_cfg)
+
 tab1, tab2, tab3 = st.tabs(["大盘研判", "选股列表", "回测"])
 
 with tab1:
     st.subheader("大盘择时信号")
-    loader = MockMarketDataLoader(str(start), str(end))
     idx = loader.load_index("000300")
     feats = build_features(idx)
     st.line_chart(feats["close"])
