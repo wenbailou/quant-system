@@ -14,7 +14,9 @@ class TimingModel:
     def _make_label(self, df: pd.DataFrame) -> pd.Series:
         future = df["close"].shift(-self.predict_horizon)
         ret = (future - df["close"]) / df["close"]
-        return (ret > 0).astype(int)
+        out = (ret > 0).astype(int)
+        out[ret.isna()] = np.nan
+        return out
 
     def fit(self, df: pd.DataFrame):
         feats = build_features(df)
