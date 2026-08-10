@@ -10,6 +10,7 @@ from src.models.timing import TimingModel
 from src.models.selection import SelectionModel
 from src.data.factory import get_loader
 from src.features.pipeline import build_features
+from src.pipeline import run_pipeline
 
 st.set_page_config(page_title="沪深量化系统", layout="wide")
 cfg = load_config("config.yaml")
@@ -49,5 +50,13 @@ with tab2:
     st.write(picks)
 
 with tab3:
-    st.subheader("回测结果（占位）")
-    st.info("回测引擎接入后展示收益曲线与绩效指标")
+    st.subheader("回测结果")
+    result = run_pipeline(loader_cfg)
+    st.line_chart(result["nav"])
+    m = result["metrics"]
+    c1, c2, c3 = st.columns(3)
+    c1.metric("年化收益", f"{m['annualized_return'] * 100:.2f}%")
+    c2.metric("最大回撤", f"{m['max_drawdown'] * 100:.2f}%")
+    c3.metric("夏普比率", f"{m['sharpe_ratio']:.2f}")
+    st.write("候选标的", result["picks"])
+    st.caption(result["advice"]["caution"])
