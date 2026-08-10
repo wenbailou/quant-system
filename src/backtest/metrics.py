@@ -7,7 +7,7 @@ def annualized_return(nav: pd.Series, periods_per_year: int = 252) -> float:
     if n < 2:
         return 0.0
     total = nav.iloc[-1] / nav.iloc[0]
-    return float(total ** (1 / (n - 1)) - 1)
+    return float(total ** (periods_per_year / (n - 1)) - 1)
 
 
 def max_drawdown(nav: pd.Series) -> float:

@@ -5,8 +5,8 @@ from src.backtest.metrics import annualized_return, max_drawdown, sharpe_ratio
 
 
 def test_annualized_return():
-    nav = pd.Series([1.0, 1.1, 1.21])
-    assert annualized_return(nav) == pytest.approx(0.10, rel=0.05)
+    nav = pd.Series([1.0, 1.1])
+    assert annualized_return(nav, periods_per_year=1) == pytest.approx(0.10, rel=0.05)
 
 
 def test_max_drawdown():
