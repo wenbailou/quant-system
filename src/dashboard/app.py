@@ -42,13 +42,19 @@ with tab1:
     st.metric("建议仓位", f"{pos * 100:.0f}%")
 
 with tab2:
-    st.subheader("候选股票")
-    stocks = {f"60000{i}.XSHG": loader.load_stock(f"60000{i}.XSHG")
-              for i in range(1, 5)}
-    sel = SelectionModel(top_k=cfg["models"]["selection"]["top_k"])
-    sel.fit(stocks)
-    picks = sel.select(stocks)
-    st.write(picks)
+    st.subheader("候选股票（经准入过滤）")
+    from src.pipeline import run_pipeline
+    res = run_pipeline(loader_cfg)
+    picks = res.get("picks", [])
+    if picks:
+        st.write(picks)
+    else:
+        st.info("当前无合格候选标的")
+    rejected = res.get("rejected", {})
+    if rejected:
+        st.markdown("**被准入过滤剔除的标的**")
+        st.table([{"代码": c, "剔除原因": "、".join(r)}
+                  for c, r in rejected.items()])
 
 with tab3:
     st.subheader("滚动调仓回测（walk-forward，扣交易成本，无前视偏差）")

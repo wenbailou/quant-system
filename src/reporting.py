@@ -40,6 +40,16 @@ def generate_markdown_report(result: dict, cfg: dict, report_date=None) -> str:
         lines.append("| - | - | 空仓观望 |")
     lines.append("")
 
+    rejected = result.get("rejected", {})
+    if rejected:
+        lines.append("### 被准入过滤剔除的标的")
+        lines.append("")
+        lines.append("| 代码 | 剔除原因 |")
+        lines.append("|---|---|")
+        for code, reasons in rejected.items():
+            lines.append(f"| {code} | {'、'.join(reasons)} |")
+        lines.append("")
+
     lines.append("## 三、风控纪律")
     lines.append("")
     lines.append(f"- 单票止损：-{risk['stop_loss_pct'] * 100:.0f}%")

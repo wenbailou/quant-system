@@ -2,19 +2,29 @@ import pandas as pd
 from src.models.timing import TimingModel
 from src.models.selection import SelectionModel
 from src.strategy.portfolio import build_portfolio, apply_risk_pipeline
+from src.strategy.eligibility import screen_stocks
 
 
 def _signal(index_trail: pd.DataFrame, stock_trail: dict[str, pd.DataFrame],
-            cfg: dict) -> dict[str, float]:
-    """在重平衡日基于截至当天的历史数据生成目标权重。"""
+            cfg: dict, metadata: dict[str, dict] | None = None
+            ) -> dict[str, float]:
+    """在重平衡日基于截至当天的历史数据生成目标权重。
+
+    选股前先做标的准入过滤（流动性/次新/停牌/涨跌停/市值/ST），
+    仅从合格标的中取 Top-K。
+    """
     position = (
         TimingModel(cfg["models"]["timing"]["predict_horizon_days"])
         .fit(index_trail)
         .predict_position(index_trail, cfg["position_levels"])
     )
+    eligible, _ = screen_stocks(stock_trail, cfg, metadata=metadata)
+    if not eligible:
+        return {}
+    eligible_trail = {c: stock_trail[c] for c in eligible}
     sel = SelectionModel(top_k=cfg["models"]["selection"]["top_k"])
-    sel.fit(stock_trail)
-    picks = sel.select(stock_trail)
+    sel.fit(eligible_trail)
+    picks = sel.select(eligible_trail)
     portfolio = build_portfolio(picks, position, cfg["risk"]["max_positions"])
     return apply_risk_pipeline(portfolio["weights"], cfg["risk"])
 
@@ -25,6 +35,7 @@ def build_weight_schedule(
     cfg: dict,
     rebalance_freq: int = 20,
     min_train_days: int = 60,
+    metadata: dict[str, dict] | None = None,
 ) -> pd.DataFrame:
     """生成每日目标权重表（消除前视偏差）。
 
@@ -42,7 +53,11 @@ def build_weight_schedule(
         if (i - min_train_days) % rebalance_freq == 0:
             idx_trail = index_df.loc[:d]
             stock_trail = {c: df.loc[:d] for c, df in stocks.items()}
-            decisions[d] = _signal(idx_trail, stock_trail, cfg)
+            if metadata:
+                decisions[d] = _signal(idx_trail, stock_trail, cfg,
+                                       metadata=metadata)
+            else:
+                decisions[d] = _signal(idx_trail, stock_trail, cfg)
 
     if not decisions:
         raise ValueError(
