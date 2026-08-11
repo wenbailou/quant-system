@@ -44,6 +44,12 @@ def build_weight_schedule(
             stock_trail = {c: df.loc[:d] for c, df in stocks.items()}
             decisions[d] = _signal(idx_trail, stock_trail, cfg)
 
+    if not decisions:
+        raise ValueError(
+            f"min_train_days={min_train_days} 超过数据长度 "
+            f"({len(dates)} 个交易日)，无法生成任何重平衡决策"
+        )
+
     schedule: dict[pd.Timestamp, dict[str, float]] = {}
     active: dict[str, float] = {}
     rebalance_list = sorted(decisions)

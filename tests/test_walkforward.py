@@ -79,3 +79,16 @@ def test_signal_only_sees_data_up_to_decision_day(monkeypatch):
     # 首次决策生成的信号，其训练数据必须截止于决策日当天 → 无前视
     assert captured["idx_last"] == first_decision_date
     assert all(v == first_decision_date for v in captured["stock_last"].values())
+
+
+def test_min_train_exceeding_data_raises():
+    """min_train_days 超过数据长度时应抛出明确错误（而非返回平坦净值 0 分）。
+
+    该场景无法生成任何重平衡决策，若静默返回 0 分会在网格搜索中被误判
+    为有效最优参数，故必须显式报错。
+    """
+    index_df, stocks = _data()
+    with pytest.raises(ValueError, match="min_train_days"):
+        build_weight_schedule(
+            index_df, stocks, _cfg(),
+            rebalance_freq=10, min_train_days=10_000)
