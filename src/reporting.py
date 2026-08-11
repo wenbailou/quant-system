@@ -49,11 +49,30 @@ def generate_markdown_report(result: dict, cfg: dict, report_date=None) -> str:
     lines.append(f"- 总仓位上限：{risk['total_position_max'] * 100:.0f}%")
     lines.append("")
 
-    lines.append("## 四、回测绩效参考（walk-forward，无前视偏差）")
+    lines.append("## 四、回测绩效参考（walk-forward，扣交易成本，无前视偏差）")
     lines.append("")
     lines.append(f"- 年化收益：{metrics.get('annualized_return', 0.0) * 100:.2f}%")
     lines.append(f"- 最大回撤：{metrics.get('max_drawdown', 0.0) * 100:.2f}%")
     lines.append(f"- 夏普比率：{metrics.get('sharpe_ratio', 0.0):.2f}")
+    if "win_rate" in metrics:
+        lines.append(f"- 胜率：{metrics.get('win_rate', 0.0) * 100:.1f}%")
+    if "profit_factor" in metrics:
+        lines.append(f"- 盈亏比：{metrics.get('profit_factor', 0.0):.2f}")
+    # 基准对比
+    benchmarks = result.get("benchmarks", {})
+    if benchmarks:
+        lines.append("")
+        lines.append("### 基准对比")
+        lines.append("")
+        lines.append("| 基准 | 基准年化 | 基准回撤 | 基准夏普 | 策略超额 |")
+        lines.append("|---|---|---|---|---|")
+        for bcode, bm in benchmarks.items():
+            lines.append(
+                f"| {bcode} | {bm.get('bench_annualized_return', 0.0) * 100:.2f}%"
+                f" | {bm.get('bench_max_drawdown', 0.0) * 100:.2f}%"
+                f" | {bm.get('bench_sharpe_ratio', 0.0):.2f}"
+                f" | {bm.get('excess_return', 0.0) * 100:.2f}% |"
+            )
     lines.append("")
 
     lines.append("---")
@@ -72,6 +91,7 @@ def export_daily_report(
     result = run_pipeline(cfg, **pipeline_kwargs)
     wf = run_walk_forward(cfg, **pipeline_kwargs)
     result["metrics"] = wf["metrics"]
+    result["benchmarks"] = wf.get("benchmarks", {})
 
     report_date = report_date or date.today().isoformat()
     md = generate_markdown_report(result, cfg, report_date=report_date)

@@ -66,8 +66,13 @@ def walk_forward_nav(
     weight_schedule: pd.DataFrame,
     stocks: dict[str, pd.DataFrame],
     initial_cash: float = 1_000_000,
+    cost_cfg: dict | None = None,
 ) -> pd.Series:
-    """按权重表计算组合净值序列。权重表与个股 close 需按日期对齐。"""
+    """按权重表计算组合净值序列。权重表与个股 close 需按日期对齐。
+
+    若提供 cost_cfg（含 commission/stamp_duty/slippage），则按换手率
+    扣除交易成本后返回扣成本净值。
+    """
     close_df = pd.DataFrame(
         {c: df["close"] for c, df in stocks.items()}
     ).sort_index()
@@ -76,4 +81,23 @@ def walk_forward_nav(
     portfolio_ret = (w * rets).sum(axis=1)
     nav = (1 + portfolio_ret).cumprod() * initial_cash
     nav.iloc[0] = initial_cash
+    if cost_cfg:
+        from src.backtest.costs import apply_costs
+        nav = apply_costs(nav, w, cost_cfg)
     return nav
+
+
+def compute_benchmark(
+    nav: pd.Series,
+    bench_nav: pd.Series,
+) -> dict:
+    """计算基准对比指标：基准自身绩效 + 超额收益。"""
+    from src.backtest.metrics import (
+        annualized_return, max_drawdown, sharpe_ratio, excess_return,
+    )
+    return {
+        "bench_annualized_return": annualized_return(bench_nav),
+        "bench_max_drawdown": max_drawdown(bench_nav),
+        "bench_sharpe_ratio": sharpe_ratio(bench_nav),
+        "excess_return": excess_return(nav, bench_nav),
+    }

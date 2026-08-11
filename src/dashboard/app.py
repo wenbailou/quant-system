@@ -51,7 +51,7 @@ with tab2:
     st.write(picks)
 
 with tab3:
-    st.subheader("滚动调仓回测（walk-forward，无前视偏差）")
+    st.subheader("滚动调仓回测（walk-forward，扣交易成本，无前视偏差）")
     wf = run_walk_forward(loader_cfg)
     st.line_chart(wf["nav"])
     m = wf["metrics"]
@@ -59,7 +59,25 @@ with tab3:
     c1.metric("年化收益", f"{m['annualized_return'] * 100:.2f}%")
     c2.metric("最大回撤", f"{m['max_drawdown'] * 100:.2f}%")
     c3.metric("夏普比率", f"{m['sharpe_ratio']:.2f}")
-    st.caption("每 20 个交易日调仓，信号仅用截至当天的历史数据，次日生效。")
+    if "win_rate" in m:
+        c4, c5 = st.columns(2)
+        c4.metric("胜率", f"{m['win_rate'] * 100:.1f}%")
+        c5.metric("盈亏比", f"{m['profit_factor']:.2f}")
+    # 基准对比
+    benchmarks = wf.get("benchmarks", {})
+    if benchmarks:
+        st.markdown("**基准对比**")
+        rows = []
+        for bcode, bm in benchmarks.items():
+            rows.append({
+                "基准": bcode,
+                "基准年化": f"{bm['bench_annualized_return'] * 100:.2f}%",
+                "基准回撤": f"{bm['bench_max_drawdown'] * 100:.2f}%",
+                "基准夏普": f"{bm['bench_sharpe_ratio']:.2f}",
+                "策略超额": f"{bm['excess_return'] * 100:.2f}%",
+            })
+        st.table(rows)
+    st.caption("每 20 个交易日调仓，信号仅用截至当天的历史数据，次日生效；已扣佣金/印花税/滑点。")
 
 with tab4:
     st.subheader("参数调优（walk-forward 网格搜索）")
