@@ -1,11 +1,13 @@
 data:
   sqlite_path: "data/market.db"
-  source: "mock"          # mock | joinquant
+  source: "mock"          # mock | joinquant | tickflow
   start_date: "2016-01-01"
   end_date: "2026-08-01"
   joinquant:
     account: ""
     password: ""
+  tickflow:
+    api_key: ""           # 推荐用环境变量 TICKFLOW_API_KEY
 
 models:
   timing:

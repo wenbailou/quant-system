@@ -2,6 +2,7 @@ import os
 from src.data.base import MarketDataLoader
 from src.data.loader import MockMarketDataLoader
 from src.data.joinquant import JoinQuantDataLoader
+from src.data.tickflow import TickFlowDataLoader
 
 
 def _from_env_or_config(jq_cfg: dict, key: str, env_name: str) -> str:
@@ -33,4 +34,12 @@ def get_loader(cfg: dict) -> MarketDataLoader:
             password=_from_env_or_config(jq_cfg, "password", "JQ_PASSWORD"),
         )
 
-    raise ValueError(f"未知数据源: {source}（可选 mock / joinquant）")
+    if source == "tickflow":
+        tf_cfg = data_cfg.get("tickflow", {})
+        return TickFlowDataLoader(
+            start=start,
+            end=end,
+            api_key=_from_env_or_config(tf_cfg, "api_key", "TICKFLOW_API_KEY"),
+        )
+
+    raise ValueError(f"未知数据源: {source}（可选 mock / joinquant / tickflow）")

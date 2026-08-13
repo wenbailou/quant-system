@@ -2,6 +2,7 @@ import pytest
 from src.data.factory import get_loader
 from src.data.loader import MockMarketDataLoader
 from src.data.joinquant import JoinQuantDataLoader
+from src.data.tickflow import TickFlowDataLoader
 
 
 def test_get_loader_mock():
@@ -9,6 +10,14 @@ def test_get_loader_mock():
                     "end_date": "2020-01-10"}}
     loader = get_loader(cfg)
     assert isinstance(loader, MockMarketDataLoader)
+
+
+def test_get_loader_tickflow():
+    cfg = {"data": {"source": "tickflow", "start_date": "2020-01-01",
+                    "end_date": "2020-01-10", "tickflow": {"api_key": "k"}}}
+    loader = get_loader(cfg)
+    assert isinstance(loader, TickFlowDataLoader)
+    assert loader._api_key == "k"
 
 
 def test_get_loader_joinquant():
