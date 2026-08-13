@@ -41,57 +41,75 @@ tab1, tab2, tab3, tab4, tab5 = st.tabs(["大盘研判", "选股列表", "回测"
 
 with tab1:
     st.subheader("大盘择时信号")
-    idx = loader.load_index("000300.XSHG")
-    feats = build_features(idx)
-    st.line_chart(feats["close"])
-    model = TimingModel(cfg["models"]["timing"]["predict_horizon_days"])
-    model.fit(idx)
-    pos = model.predict_position(idx, cfg["position_levels"])
-    st.metric("建议仓位", f"{pos * 100:.0f}%")
+    try:
+        idx = loader.load_index("000300.XSHG")
+        feats = build_features(idx)
+        st.line_chart(feats["close"])
+        model = TimingModel(cfg["models"]["timing"]["predict_horizon_days"])
+        model.fit(idx)
+        pos = model.predict_position(idx, cfg["position_levels"])
+        st.metric("建议仓位", f"{pos * 100:.0f}%")
+    except Exception as e:
+        st.error(f"大盘数据加载失败：{e}")
+        st.caption("请稍后刷新重试（TickFlow 免费层分钟级限流）")
 
 with tab2:
     st.subheader("候选股票（经准入过滤）")
     from src.pipeline import run_pipeline
-    res = run_pipeline(loader_cfg, stock_codes=DEFAULT_STOCKS)
-    picks = res.get("picks", [])
-    if picks:
-        st.write(picks)
-    else:
-        st.info("当前无合格候选标的")
-    rejected = res.get("rejected", {})
-    if rejected:
-        st.markdown("**被准入过滤剔除的标的**")
-        st.table([{"代码": c, "剔除原因": "、".join(r)}
-                  for c, r in rejected.items()])
+    try:
+        res = run_pipeline(loader_cfg, stock_codes=DEFAULT_STOCKS)
+        picks = res.get("picks", [])
+        if picks:
+            st.write(picks)
+        else:
+            st.info("当前无合格候选标的")
+        rejected = res.get("rejected", {})
+        if rejected:
+            st.markdown("**被准入过滤剔除的标的**")
+            st.table([{"代码": c, "剔除原因": "、".join(r)}
+                      for c, r in rejected.items()])
+    except Exception as e:
+        st.error(f"选股列表加载失败：{e}")
+        st.caption("请稍后刷新重试（TickFlow 免费层分钟级限流）")
 
 with tab3:
     st.subheader("滚动调仓回测（walk-forward，扣交易成本，无前视偏差）")
-    wf = run_walk_forward(loader_cfg, stock_codes=DEFAULT_STOCKS)
-    st.line_chart(wf["nav"])
-    m = wf["metrics"]
-    c1, c2, c3 = st.columns(3)
-    c1.metric("年化收益", f"{m['annualized_return'] * 100:.2f}%")
-    c2.metric("最大回撤", f"{m['max_drawdown'] * 100:.2f}%")
-    c3.metric("夏普比率", f"{m['sharpe_ratio']:.2f}")
-    if "win_rate" in m:
-        c4, c5 = st.columns(2)
-        c4.metric("胜率", f"{m['win_rate'] * 100:.1f}%")
-        c5.metric("盈亏比", f"{m['profit_factor']:.2f}")
-    # 基准对比
-    benchmarks = wf.get("benchmarks", {})
-    if benchmarks:
-        st.markdown("**基准对比**")
-        rows = []
-        for bcode, bm in benchmarks.items():
-            rows.append({
-                "基准": bcode,
-                "基准年化": f"{bm['bench_annualized_return'] * 100:.2f}%",
-                "基准回撤": f"{bm['bench_max_drawdown'] * 100:.2f}%",
-                "基准夏普": f"{bm['bench_sharpe_ratio']:.2f}",
-                "策略超额": f"{bm['excess_return'] * 100:.2f}%",
-            })
-        st.table(rows)
-    st.caption("每 20 个交易日调仓，信号仅用截至当天的历史数据，次日生效；已扣佣金/印花税/滑点。")
+    st.caption("该回测会加载全部候选股票并逐期训练模型，耗时较长且易触发数据源限流，请按需运行。")
+    if st.button("运行回测", type="primary"):
+        with st.spinner("正在运行回测，请稍候…"):
+            try:
+                wf = run_walk_forward(loader_cfg, stock_codes=DEFAULT_STOCKS)
+            except Exception as e:
+                st.error(f"回测运行失败：{e}")
+                st.caption("可能是 TickFlow 免费层限流，请等待一分钟后重试。")
+                st.stop()
+        st.line_chart(wf["nav"])
+        m = wf["metrics"]
+        c1, c2, c3 = st.columns(3)
+        c1.metric("年化收益", f"{m['annualized_return'] * 100:.2f}%")
+        c2.metric("最大回撤", f"{m['max_drawdown'] * 100:.2f}%")
+        c3.metric("夏普比率", f"{m['sharpe_ratio']:.2f}")
+        if "win_rate" in m:
+            c4, c5 = st.columns(2)
+            c4.metric("胜率", f"{m['win_rate'] * 100:.1f}%")
+            c5.metric("盈亏比", f"{m['profit_factor']:.2f}")
+        # 基准对比
+        benchmarks = wf.get("benchmarks", {})
+        if benchmarks:
+            st.markdown("**基准对比**")
+            rows = []
+            for bcode, bm in benchmarks.items():
+                rows.append({
+                    "基准": bcode,
+                    "基准年化": f"{bm['bench_annualized_return'] * 100:.2f}%",
+                    "基准回撤": f"{bm['bench_max_drawdown'] * 100:.2f}%",
+                    "基准夏普": f"{bm['bench_sharpe_ratio']:.2f}",
+                    "策略超额": f"{bm['excess_return'] * 100:.2f}%",
+                })
+            st.table(rows)
+        st.caption("每 20 个交易日调仓，信号仅用截至当天的历史数据，次日生效；已扣佣金/印花税/滑点。")
+    else:
+        st.caption("点击上方「运行回测」按钮开始。")
 
 with tab4:
     st.subheader("参数调优（walk-forward 网格搜索）")
