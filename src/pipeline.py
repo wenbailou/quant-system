@@ -13,6 +13,17 @@ from src.strategy.eligibility import screen_stocks, parse_rejected
 from src.signals import build_daily_advice
 
 
+def _load_metadata(loader, stock_codes, metadata=None) -> dict:
+    """构造准入过滤所需的元数据。
+
+    若调用方显式传入 metadata 则直接使用；否则从数据源逐只加载
+    （load_stock_metadata），聚合为 {code: meta}。
+    """
+    if metadata is not None:
+        return metadata
+    return {c: loader.load_stock_metadata(c) for c in stock_codes}
+
+
 def run_pipeline(
     cfg: dict,
     index_code: str = "000300.XSHG",
@@ -36,7 +47,8 @@ def run_pipeline(
 
     stock_codes = stock_codes or [f"60000{i}.XSHG" for i in range(1, 5)]
     stocks = {c: loader.load_stock(c) for c in stock_codes}
-    eligible, rejected = screen_stocks(stocks, cfg, metadata=metadata)
+    meta = _load_metadata(loader, stock_codes, metadata)
+    eligible, rejected = screen_stocks(stocks, cfg, metadata=meta)
     eligible_stocks = {c: stocks[c] for c in eligible}
     sel = SelectionModel(top_k=cfg["models"]["selection"]["top_k"])
     sel.fit(eligible_stocks)
@@ -51,7 +63,8 @@ def run_pipeline(
         trailing_stop_pct=cfg["risk"]["trailing_stop_pct"],
         take_profit_pct=cfg["risk"]["take_profit_pct"],
     )
-    nav = engine.run(eligible_stocks, weights)
+    nav = engine.run(eligible_stocks, weights,
+                     dates=index_df.index)
 
     advice = build_daily_advice(
         position=position,
@@ -98,11 +111,12 @@ def run_walk_forward(
     index_df = loader.load_index(index_code)
     stock_codes = stock_codes or [f"60000{i}.XSHG" for i in range(1, 5)]
     stocks = {c: loader.load_stock(c) for c in stock_codes}
+    meta = _load_metadata(loader, stock_codes, metadata)
 
     schedule = build_weight_schedule(
         index_df, stocks, cfg,
         rebalance_freq=rebalance_freq, min_train_days=min_train_days,
-        metadata=metadata,
+        metadata=meta,
     )
     cost_cfg = cfg["risk"]
     nav = walk_forward_nav(schedule, stocks, cost_cfg=cost_cfg)

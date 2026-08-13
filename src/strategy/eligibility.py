@@ -44,6 +44,18 @@ def list_trading_days(df: pd.DataFrame) -> int:
     return int(len(df))
 
 
+def _list_days(df, meta) -> int:
+    """上市交易日数：优先用 metadata 的 list_date，否则以行情长度近似。"""
+    list_date = meta.get("list_date")
+    if list_date:
+        try:
+            last = df.index[-1]
+            return int(len(pd.bdate_range(pd.Timestamp(list_date), last)))
+        except Exception:
+            pass
+    return list_trading_days(df)
+
+
 def screen_stocks(
     stocks: dict[str, pd.DataFrame],
     cfg: dict,
@@ -73,17 +85,18 @@ def screen_stocks(
 
     for code, df in stocks.items():
         reasons: list[str] = []
+        meta = metadata.get(code, {})
 
         if is_suspended(df):
             reasons.append("停牌")
-        if is_limit_up(df, limit_pct=risk.get("limit_pct", 0.10)):
+        if is_limit_up(df, limit_pct=meta.get("limit_pct", risk.get("limit_pct", 0.10))):
             reasons.append("涨停")
         if avg_amount(df) < min_amount:
             reasons.append(f"流动性不足(近20日均额 {avg_amount(df):,.0f} < {min_amount:,.0f})")
-        if list_trading_days(df) < min_days:
-            reasons.append(f"次新(上市{list_trading_days(df)}日 < {min_days}日)")
+        days = _list_days(df, meta)
+        if days < min_days:
+            reasons.append(f"次新(上市{days}日 < {min_days}日)")
 
-        meta = metadata.get(code, {})
         is_st = meta.get("is_st", False)
         if is_st:
             reasons.append("ST")

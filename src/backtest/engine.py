@@ -40,7 +40,12 @@ class RiskBacktestEngine:
         self.take_profit_pct = take_profit_pct
 
     def run(self, prices: dict[str, pd.DataFrame],
-            weights: dict[str, float]) -> pd.Series:
+            weights: dict[str, float],
+            dates: pd.DatetimeIndex | None = None) -> pd.Series:
+        if not prices:
+            # 无任何可交易标的（如全部被准入过滤剔除）→ 全程空仓持有现金
+            idx = dates if dates is not None else pd.DatetimeIndex([])
+            return pd.Series(self.initial_cash, index=idx)
         closes = {code: df["close"] for code, df in prices.items()}
         close_df = pd.concat(closes, axis=1).sort_index()
         dates = close_df.index

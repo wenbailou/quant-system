@@ -63,3 +63,12 @@ class JoinQuantDataLoader(MarketDataLoader):
 
     def load_index(self, code: str) -> pd.DataFrame:
         return self.load_stock(code)
+
+    def load_stock_metadata(self, code: str) -> dict:
+        """聚宽元数据（市值/上市日期/ST）接入的占位实现。
+
+        当前返回空 dict，表示不启用市值/次新/ST 过滤（口径与 mock 一致
+        时，仅流动性/停牌/涨跌停过滤生效）。后续可通过聚宽
+        get_fundamentals / get_stock_info 等接口补齐真实字段。
+        """
+        return {}

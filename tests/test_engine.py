@@ -62,3 +62,12 @@ def test_risk_engine_empty_weights_flat():
     engine = RiskBacktestEngine(initial_cash=1_000_000)
     nav = engine.run(prices, {})
     assert (nav == 1_000_000).all()
+
+
+def test_risk_engine_empty_prices_flat_with_dates():
+    # 所有候选被准入过滤剔除 → prices 为空，应返回给定日期上的恒平净值
+    dates = pd.bdate_range("2020-01-01", periods=5)
+    engine = RiskBacktestEngine(initial_cash=1_000_000)
+    nav = engine.run({}, {}, dates=dates)
+    assert len(nav) == 5
+    assert (nav == 1_000_000).all()
