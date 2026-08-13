@@ -50,7 +50,10 @@ def run_pipeline(
     meta = _load_metadata(loader, stock_codes, metadata)
     eligible, rejected = screen_stocks(stocks, cfg, metadata=meta)
     eligible_stocks = {c: stocks[c] for c in eligible}
-    sel = SelectionModel(top_k=cfg["models"]["selection"]["top_k"])
+    sel = SelectionModel(
+        top_k=cfg["models"]["selection"]["top_k"],
+        label_horizon=cfg["models"]["selection"].get("predict_horizon_days", 5),
+    )
     sel.fit(eligible_stocks)
     picks = sel.select(eligible_stocks)
 

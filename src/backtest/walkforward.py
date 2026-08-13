@@ -22,7 +22,10 @@ def _signal(index_trail: pd.DataFrame, stock_trail: dict[str, pd.DataFrame],
     if not eligible:
         return {}
     eligible_trail = {c: stock_trail[c] for c in eligible}
-    sel = SelectionModel(top_k=cfg["models"]["selection"]["top_k"])
+    sel = SelectionModel(
+        top_k=cfg["models"]["selection"]["top_k"],
+        label_horizon=cfg["models"]["selection"].get("predict_horizon_days", 5),
+    )
     sel.fit(eligible_trail)
     picks = sel.select(eligible_trail)
     portfolio = build_portfolio(picks, position, cfg["risk"]["max_positions"])
