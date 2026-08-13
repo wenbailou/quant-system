@@ -56,6 +56,8 @@ def run_pipeline(
     )
     sel.fit(eligible_stocks)
     picks = sel.select(eligible_stocks)
+    # 每只候选股票的模型评分（用于决策仪表盘评级）
+    scores = {c: sel.score_stock(df) for c, df in eligible_stocks.items()}
 
     portfolio = build_portfolio(picks, position, cfg["risk"]["max_positions"])
     # 行业映射（用于行业集中度风控）；取 meta.industry，缺省为"其他"
@@ -87,6 +89,7 @@ def run_pipeline(
         "position": position,
         "picks": picks,
         "weights": weights,
+        "scores": scores,
         "nav": nav,
         "rejected": parse_rejected(rejected),
         "metrics": {
