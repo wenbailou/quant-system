@@ -29,7 +29,7 @@ loader_cfg["data"]["start_date"] = str(start)
 loader_cfg["data"]["end_date"] = str(end)
 loader = get_loader(loader_cfg)
 
-tab1, tab2, tab3, tab4 = st.tabs(["大盘研判", "选股列表", "回测", "参数调优"])
+tab1, tab2, tab3, tab4, tab5 = st.tabs(["大盘研判", "选股列表", "回测", "参数调优", "风控"])
 
 with tab1:
     st.subheader("大盘择时信号")
@@ -134,3 +134,28 @@ with tab4:
             st.markdown(format_results_table(out["results"]))
     else:
         st.caption("配置上方参数后点击「运行网格搜索」，结果将在此展示。")
+
+with tab5:
+    st.subheader("组合级风控参数")
+    risk = cfg["risk"]
+    c1, c2, c3 = st.columns(3)
+    c1.metric("单票仓位上限", f"{risk['single_stock_max'] * 100:.0f}%")
+    c2.metric("行业集中度上限", f"{risk.get('industry_max', 0.30) * 100:.0f}%")
+    c3.metric("现金比例下限", f"{risk.get('cash_min_ratio', 0.10) * 100:.0f}%")
+    c4, c5, c6 = st.columns(3)
+    c4.metric("持仓数量下限", f"{risk.get('min_positions', 5)} 只")
+    c5.metric("持仓数量上限", f"{risk.get('max_positions', 15)} 只")
+    c6.metric("最大回撤熔断", f"{risk.get('max_drawdown_circuit', 0.15) * 100:.0f}%")
+    st.write("")
+    st.markdown("**风控执行规则**")
+    st.markdown(
+        "- 单票止损：-{0:.0f}%，移动止损：自高点回撤 {1:.0f}%，止盈：+{2:.0f}%".format(
+            risk['stop_loss_pct'] * 100, risk['trailing_stop_pct'] * 100,
+            risk['take_profit_pct'] * 100))
+    st.markdown(
+        "- 组合风控流水线：单票上限 → 行业集中度 → 现金下限 → 持仓数下限"
+        "（不足则空仓不建仓）")
+    st.markdown(
+        "- 最大回撤熔断：组合自高点回撤达 {0:.0f}% 时强制清仓至现金".format(
+            risk.get('max_drawdown_circuit', 0.15) * 100))
+    st.caption("组合级风控在回测引擎中实时执行，与选股准入过滤共同构成完整风控体系。")

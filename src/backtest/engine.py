@@ -33,11 +33,13 @@ class RiskBacktestEngine:
         stop_loss_pct: float = 0.08,
         trailing_stop_pct: float = 0.10,
         take_profit_pct: float = 0.20,
+        circuit_breaker_pct: float | None = None,
     ):
         self.initial_cash = initial_cash
         self.stop_loss_pct = stop_loss_pct
         self.trailing_stop_pct = trailing_stop_pct
         self.take_profit_pct = take_profit_pct
+        self.circuit_breaker_pct = circuit_breaker_pct
 
     def run(self, prices: dict[str, pd.DataFrame],
             weights: dict[str, float],
@@ -64,6 +66,8 @@ class RiskBacktestEngine:
             positions[code] = {"shares": shares, "entry": entry, "high": entry}
 
         nav = []
+        peak = self.initial_cash
+        triggered = False
         for dt in dates:
             for code, pos in list(positions.items()):
                 price = float(close_df.at[dt, code])
@@ -79,7 +83,25 @@ class RiskBacktestEngine:
                 price = float(close_df.at[dt, code])
                 if price == price:
                     held_value += pos["shares"] * price
-            nav.append(cash + held_value)
+            total = cash + held_value
+            nav.append(total)
+
+            # 最大回撤熔断：自高点回撤达阈值 → 强制清仓至现金
+            peak = max(peak, total)
+            if (
+                not triggered
+                and self.circuit_breaker_pct is not None
+                and peak > 0
+                and (peak - total) / peak >= self.circuit_breaker_pct
+            ):
+                for code, pos in list(positions.items()):
+                    price = float(close_df.at[dt, code])
+                    if price == price:
+                        cash += pos["shares"] * price
+                    del positions[code]
+                held_value = 0.0
+                nav[-1] = cash
+                triggered = True
 
         return pd.Series(nav, index=dates)
 

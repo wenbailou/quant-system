@@ -55,13 +55,20 @@ def run_pipeline(
     picks = sel.select(eligible_stocks)
 
     portfolio = build_portfolio(picks, position, cfg["risk"]["max_positions"])
-    weights = apply_risk_pipeline(portfolio["weights"], cfg["risk"])
+    # 行业映射（用于行业集中度风控）；取 meta.industry，缺省为"其他"
+    industry_map = {
+        c: (meta.get(c, {}).get("industry") or "其他") for c in portfolio["stocks"]
+    } if meta else None
+    weights = apply_risk_pipeline(
+        portfolio["weights"], cfg["risk"], industry_map=industry_map,
+    )
 
     engine = RiskBacktestEngine(
         initial_cash=1_000_000,
         stop_loss_pct=cfg["risk"]["stop_loss_pct"],
         trailing_stop_pct=cfg["risk"]["trailing_stop_pct"],
         take_profit_pct=cfg["risk"]["take_profit_pct"],
+        circuit_breaker_pct=cfg["risk"].get("max_drawdown_circuit"),
     )
     nav = engine.run(eligible_stocks, weights,
                      dates=index_df.index)

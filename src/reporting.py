@@ -57,6 +57,10 @@ def generate_markdown_report(result: dict, cfg: dict, report_date=None) -> str:
     lines.append(f"- 止盈：+{risk['take_profit_pct'] * 100:.0f}%")
     lines.append(f"- 单票仓位上限：{risk['single_stock_max'] * 100:.0f}%")
     lines.append(f"- 总仓位上限：{risk['total_position_max'] * 100:.0f}%")
+    lines.append(f"- 行业集中度：单行业 ≤ {risk.get('industry_max', 0.30) * 100:.0f}%")
+    lines.append(f"- 现金下限：≥ {risk.get('cash_min_ratio', 0.10) * 100:.0f}%")
+    lines.append(f"- 持仓下限：≥ {risk.get('min_positions', 5)} 只")
+    lines.append(f"- 最大回撤熔断：自高点回撤 {risk.get('max_drawdown_circuit', 0.15) * 100:.0f}% 强制降仓")
     lines.append("")
 
     lines.append("## 四、回测绩效参考（walk-forward，扣交易成本，无前视偏差）")

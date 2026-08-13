@@ -71,3 +71,30 @@ def test_risk_engine_empty_prices_flat_with_dates():
     nav = engine.run({}, {}, dates=dates)
     assert len(nav) == 5
     assert (nav == 1_000_000).all()
+
+
+def test_risk_engine_circuit_breaker_liquidates():
+    # 价格先涨后大跌，触发熔断（-15%）后应清仓至现金
+    prices = _prices({"600000": [100.0, 120.0, 100.0, 95.0]})
+    engine = RiskBacktestEngine(
+        initial_cash=1_000_000, take_profit_pct=1.0,
+        trailing_stop_pct=1.0, stop_loss_pct=1.0,  # 禁用单票止损/移动止损
+        circuit_breaker_pct=0.15,
+    )
+    nav = engine.run(prices, {"600000": 1.0})
+    # day2 高点 1.2M → day3 净值 1.0M 回撤 16.7% ≥ 15% → 熔断清仓
+    # 熔断后净值冻结在熔断日，不再随价格变化
+    assert nav.iloc[-1] == nav.iloc[-2]  # day3 熔断后 day4 不变
+
+
+def test_risk_engine_no_circuit_when_disabled():
+    prices = _prices({"600000": [100.0, 120.0, 100.0, 95.0]})
+    engine = RiskBacktestEngine(
+        initial_cash=1_000_000, take_profit_pct=1.0,
+        trailing_stop_pct=1.0, stop_loss_pct=1.0,  # 禁用单票止损/移动止损
+        circuit_breaker_pct=None,  # 未启用熔断
+    )
+    nav = engine.run(prices, {"600000": 1.0})
+    # 未熔断且未触发单票风控，净值随价格继续变化（day3=1.0M, day4=0.95M）
+    assert nav.iloc[-1] == pytest.approx(950_000)
+    assert nav.iloc[-1] != nav.iloc[-2]
