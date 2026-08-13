@@ -29,6 +29,14 @@ loader_cfg["data"]["start_date"] = str(start)
 loader_cfg["data"]["end_date"] = str(end)
 loader = get_loader(loader_cfg)
 
+# 看板默认股票池：mock 用 600001-600004，真实数据用常见 A 股大票
+DEFAULT_STOCKS = (
+    ["600000.XSHG", "600519.XSHG", "600036.XSHG", "000001.XSHE",
+     "600887.XSHG", "601899.XSHG"]
+    if cfg["data"]["source"] != "mock"
+    else [f"60000{i}.XSHG" for i in range(1, 5)]
+)
+
 tab1, tab2, tab3, tab4, tab5 = st.tabs(["大盘研判", "选股列表", "回测", "参数调优", "风控"])
 
 with tab1:
@@ -44,7 +52,7 @@ with tab1:
 with tab2:
     st.subheader("候选股票（经准入过滤）")
     from src.pipeline import run_pipeline
-    res = run_pipeline(loader_cfg)
+    res = run_pipeline(loader_cfg, stock_codes=DEFAULT_STOCKS)
     picks = res.get("picks", [])
     if picks:
         st.write(picks)
@@ -58,7 +66,7 @@ with tab2:
 
 with tab3:
     st.subheader("滚动调仓回测（walk-forward，扣交易成本，无前视偏差）")
-    wf = run_walk_forward(loader_cfg)
+    wf = run_walk_forward(loader_cfg, stock_codes=DEFAULT_STOCKS)
     st.line_chart(wf["nav"])
     m = wf["metrics"]
     c1, c2, c3 = st.columns(3)
