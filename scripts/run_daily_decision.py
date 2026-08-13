@@ -19,6 +19,8 @@ def main():
     parser.add_argument("--date", default=None, help="报告日期（默认今天）")
     parser.add_argument("--output", default=None, help="输出 Markdown 路径")
     parser.add_argument("--no-push", action="store_true", help="不推送，仅生成报告")
+    parser.add_argument("--html", default=None,
+                        help="同时生成静态网页并输出到该路径（默认 reports/dashboard_日期.html）")
     parser.add_argument("--skip-walkforward", action="store_true",
                         help="跳过耗时的 walk-forward 回测（减少限流）")
     parser.add_argument("--wecom", default=None, help="企业微信 webhook")
@@ -46,6 +48,14 @@ def main():
     Path(output).parent.mkdir(parents=True, exist_ok=True)
     Path(output).write_text(md, encoding="utf-8")
     print(f"✓ 报告已生成：{output}")
+
+    if args.html is not False:
+        from src.dashboard.web import render_dashboard_html
+        html_path = args.html or f"reports/dashboard_{report_date}.html"
+        html = render_dashboard_html(result, cfg, report_date=report_date)
+        Path(html_path).parent.mkdir(parents=True, exist_ok=True)
+        Path(html_path).write_text(html, encoding="utf-8")
+        print(f"✓ 网页已生成：{html_path}")
 
     if not args.no_push:
         print("→ 推送决策仪表盘...")
